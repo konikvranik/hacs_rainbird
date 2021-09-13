@@ -4,6 +4,7 @@ import attr
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import HomeAssistantType
+from pyrainbird import ModelAndVersion, RainbirdController
 
 DOMAIN = "rainbird"
 
@@ -19,8 +20,16 @@ class RuntimeEntryData:
     """Store runtime data for rainbird config entries."""
 
     entry_id = attr.ib(type=str)
-    client = attr.ib(type="RainbirdController")
+    client = attr.ib(type=RainbirdController)
     number_of_stations = attr.ib(type=int)
+    model_and_version = attr.ib(type=ModelAndVersion, init=False)
+
+    def get_version(self):
+        return "%d.%d" % (
+            self.model_and_version.major, self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
+
+    def get_model(self):
+        return self.model_and_version.model
 
     def async_update_entity(
             self, hass: HomeAssistantType, component_key: str, key: int

@@ -17,7 +17,6 @@ from pyrainbird import RainbirdController
 from voluptuous import ALLOW_EXTRA
 
 from .entry_data import RuntimeEntryData
-from .sensor import SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +27,7 @@ DEFAULT_NAME = MANIFEST["name"]
 
 PLATFORM_SENSOR = "sensor"
 CONF_NUMBER_OF_STATIONS = "number_of_stations"
+SENSOR_TYPES = {"rainsensor": ["Rainsensor", None, "mdi:water"]}
 SCHEMA = {vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
           vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES)}
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
@@ -47,11 +47,17 @@ async def async_setup_entry(hass: HomeAssistantType, entry):
                                                                           CONF_NUMBER_OF_STATIONS, None))
 
     @callback
+    def update_model_and_version():
+        hass.data[DOMAIN][entry.entry_id].model_and_version = cli.get_model_and_version()
+
+    await hass.async_add_executor_job(update_model_and_version)
+
+    @callback
     def irrigation_start(call):
         """My first service."""
         _LOGGER.debug("Called HDO: %s", call)
         zone = call.data["zone"]
-        response = entry_data.client.startIrrigation(int(zone), int(call.data["duration"]))
+        response = entry_data.client.irrigate_zone(int(zone), int(call.data["duration"]))
         if response and response["type"] == "AcknowledgeResponse":
             return True
 

@@ -7,8 +7,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_HOST, CONF_MONITORED_CONDITI
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
 
-from . import DOMAIN, CONF_NUMBER_OF_STATIONS
-from .sensor import SENSOR_TYPES
+from . import DOMAIN, CONF_NUMBER_OF_STATIONS, SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -13,10 +13,9 @@ from homeassistant.const import (
 from homeassistant.helpers import config_validation as cv
 from pyrainbird import RainbirdController
 
-from . import DOMAIN, RuntimeEntryData
+from . import RuntimeEntryData, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {vol.Required(CONF_SWITCHES, default={}): vol.Schema(
         {
@@ -31,11 +30,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def add_entities(config_entry, data: RuntimeEntryData, async_add_entities):
+def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass):
     if data.number_of_stations:
         for i in range(data.number_of_stations):
-            switch = RainBirdSwitch(data.client, {"zone": i})
-            config_entry.unique_id = switch.unique_id
+            switch = RainBirdSwitch(data.client, {"zone": i, "id": config_entry.entry_id}, hass, data)
             async_add_entities([switch], True)
     else:
         stations = data.client.get_available_stations()
@@ -44,24 +42,26 @@ def add_entities(config_entry, data: RuntimeEntryData, async_add_entities):
         for state in stations.stations.states:
             cnt = cnt + 1
             if state:
-                switch = RainBirdSwitch(data.client, {"zone": cnt})
-                config_entry.unique_id = switch.unique_id
+                switch = RainBirdSwitch(data.client, {"zone": cnt, "id": config_entry.entry_id}, hass, data)
                 async_add_entities([switch], True)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up ESPHome binary sensors based on a config entry."""
     data = hass.data.get(DOMAIN)[config_entry.entry_id]
-    await hass.async_add_executor_job(add_entities, config_entry, data, async_add_entities)
+    await hass.async_add_executor_job(add_entities, config_entry, data, async_add_entities, hass)
 
 
 class RainBirdSwitch(SwitchDevice):
     """Representation of a Rain Bird switch."""
 
-    def __init__(self, rb: RainbirdController, dev):
+    def __init__(self, rb: RainbirdController, dev, hass, data: RuntimeEntryData = None):
         """Initialize a Rain Bird Switch Device."""
+        self._data = data
+        self._hass = hass
         self._rainbird = rb
         self._zone = int(dev.get(CONF_ZONE))
+        self._device_id = dev.get("id")
         self._name = dev.get(CONF_FRIENDLY_NAME, "Sprinkler {}".format(self._zone))
         self._state = None
         self._duration = dev.get(CONF_TRIGGER_TIME)
@@ -76,6 +76,24 @@ class RainBirdSwitch(SwitchDevice):
     def name(self):
         """Get the name of the switch."""
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return Unique ID string."""
+        return "%s_switch_%d" % (DOMAIN, self._zone)
+
+    @property
+    def device_info(self):
+        """Information about this entity/device."""
+
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+            # If desired, the name for the device could be different to the entity
+            "name": "Rainbird controller",
+            "sw_version": self._data.get_version(),
+            "model": self._data.get_version(),
+            "manufacturer": "Rainbird",
+        }
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
