@@ -2,11 +2,13 @@
 import logging
 
 import voluptuous as vol
-
 from homeassistant import config_entries
-from homeassistant.const import CONF_CODE, CONF_PASSWORD, CONF_HOST
+from homeassistant.const import CONF_PASSWORD, CONF_HOST, CONF_MONITORED_CONDITIONS
 from homeassistant.core import callback
-from . import DOMAIN
+from homeassistant.helpers import config_validation
+
+from . import DOMAIN, CONF_NUMBER_OF_STATIONS
+from .sensor import SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,8 +27,6 @@ class HDOFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):  # pylint: disable=dangerous-default-value
         """Display the form, then store values and create entry."""
-        if user_input is None:
-            user_input = {}
         self._errors = {}
         if user_input is not None:
             if user_input[CONF_HOST] != "":
@@ -34,13 +34,16 @@ class HDOFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 self._data.update(user_input)
                 # Call next step
-                return self.async_create_entry(title=self._data[CONF_CODE], data=self._data)
+                return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
             else:
                 self._errors["base"] = "host"
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema({
-                vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-                vol.Optional(CONF_PASSWORD): str
+                vol.Required(CONF_HOST): str,
+                vol.Optional(CONF_PASSWORD): str,
+                vol.Optional(CONF_NUMBER_OF_STATIONS): int,
+                vol.Optional(CONF_MONITORED_CONDITIONS,
+                             default=list(SENSOR_TYPES.keys())): config_validation.multi_select(SENSOR_TYPES),
             })
         )
 
@@ -87,7 +90,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         else:
             return self.async_show_form(
                 step_id="init", data_schema=vol.Schema({
-                    vol.Optional(CONF_PASSWORD): str
+                    vol.Optional(CONF_PASSWORD): str,
+                    vol.Optional(CONF_NUMBER_OF_STATIONS): int,
+                    vol.Optional(CONF_MONITORED_CONDITIONS,
+                                 default=list(SENSOR_TYPES.keys())): config_validation.multi_select(SENSOR_TYPES)
                 })
             )
 

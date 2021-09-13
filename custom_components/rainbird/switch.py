@@ -3,49 +3,62 @@
 import logging
 
 import voluptuous as vol
-from pyrainbird import RainbirdController
-
 from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchDevice
 from homeassistant.const import (
     CONF_FRIENDLY_NAME,
     CONF_SCAN_INTERVAL,
     CONF_SWITCHES,
     CONF_TRIGGER_TIME,
-    CONF_ZONE, CONF_PASSWORD, CONF_HOST,
-)
+    CONF_ZONE, )
 from homeassistant.helpers import config_validation as cv
-from . import SCHEMA
+from pyrainbird import RainbirdController
+
+from . import DOMAIN, RuntimeEntryData
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    SCHEMA.extend(
-        {vol.Required(CONF_SWITCHES, default={}): vol.Schema(
-            {
-                cv.string: {
-                    vol.Optional(CONF_FRIENDLY_NAME): cv.string,
-                    vol.Required(CONF_ZONE): cv.string,
-                    vol.Required(CONF_TRIGGER_TIME): cv.string,
-                    vol.Optional(CONF_SCAN_INTERVAL): cv.string,
-                }
+    {vol.Required(CONF_SWITCHES, default={}): vol.Schema(
+        {
+            cv.string: {
+                vol.Optional(CONF_FRIENDLY_NAME): cv.string,
+                vol.Required(CONF_ZONE): cv.string,
+                vol.Required(CONF_TRIGGER_TIME): cv.string,
+                vol.Optional(CONF_SCAN_INTERVAL): cv.string,
             }
-        )}
-    )
+        }
+    )}
 )
+
+
+def add_entities(config_entry, data: RuntimeEntryData, async_add_entities):
+    if data.number_of_stations:
+        for i in range(data.number_of_stations):
+            switch = RainBirdSwitch(data.client, {"zone": i})
+            config_entry.unique_id = switch.unique_id
+            async_add_entities([switch], True)
+    else:
+        stations = data.client.get_available_stations()
+
+        cnt = 0
+        for state in stations.stations.states:
+            cnt = cnt + 1
+            if state:
+                switch = RainBirdSwitch(data.client, {"zone": cnt})
+                config_entry.unique_id = switch.unique_id
+                async_add_entities([switch], True)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up ESPHome binary sensors based on a config entry."""
-    switch = RainBirdSwitch(RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD]),
-                            config_entry.data)
-    config_entry.unique_id = switch.unique_id
-    async_add_entities([switch], True)
+    data = hass.data.get(DOMAIN)[config_entry.entry_id]
+    await hass.async_add_executor_job(add_entities, config_entry, data, async_add_entities)
 
 
 class RainBirdSwitch(SwitchDevice):
     """Representation of a Rain Bird switch."""
 
-    def __init__(self, rb, dev):
+    def __init__(self, rb: RainbirdController, dev):
         """Initialize a Rain Bird Switch Device."""
         self._rainbird = rb
         self._zone = int(dev.get(CONF_ZONE))
@@ -66,19 +79,19 @@ class RainBirdSwitch(SwitchDevice):
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
-        response = self._rainbird.startIrrigation(int(self._zone), int(self._duration))
+        response = self._rainbird.irrigate_zone(int(self._zone), int(self._duration))
         if response and response["type"] == "AcknowledgeResponse":
             self._state = True
 
     def turn_off(self, **kwargs):
         """Turn the switch off."""
-        response = self._rainbird.stopIrrigation()
+        response = self._rainbird.stop_irrigation()
         if response and response["type"] == "AcknowledgeResponse":
             self._state = False
 
     def get_device_status(self):
         """Get the status of the switch from Rain Bird Controller."""
-        response = self._rainbird.currentIrrigation()
+        response = self._rainbird.get_current_irrigation()
         if response is None:
             return None
         if isinstance(response, dict) and "sprinklers" in response:

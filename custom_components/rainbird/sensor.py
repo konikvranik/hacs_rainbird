@@ -27,14 +27,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up ESPHome binary sensors based on a config entry."""
     config = config_entry.data
     sensor = RainBirdSensor(RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD]),
-                            config.get(CONF_MONITORED_CONDITIONS))
+                            config.get(CONF_MONITORED_CONDITIONS)[0])
     async_add_entities([sensor], True)
 
 
 class RainBirdSensor(Entity):
     """A sensor implementation for Rain Bird device."""
 
-    def __init__(self, controller, sensor_type):
+    def __init__(self, controller: RainbirdController, sensor_type):
         """Initialize the Rain Bird sensor."""
         self._sensor_type = sensor_type
         self._controller = controller
@@ -52,7 +52,7 @@ class RainBirdSensor(Entity):
         """Get the latest data and updates the states."""
         _LOGGER.debug("Updating sensor: %s", self._name)
         if self._sensor_type == "rainsensor":
-            result = self._controller.currentRainSensorState()
+            result = self._controller.get_rain_sensor_state()
             if result and result["type"] == "CurrentRainSensorStateResponse":
                 self._state = result["sensorState"]
             else:
