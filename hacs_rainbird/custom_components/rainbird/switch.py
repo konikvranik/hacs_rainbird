@@ -3,6 +3,7 @@
 import logging
 
 import voluptuous as vol
+from pyrainbird import RainbirdController
 
 from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchDevice
 from homeassistant.const import (
@@ -10,18 +11,16 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
     CONF_SWITCHES,
     CONF_TRIGGER_TIME,
-    CONF_ZONE,
+    CONF_ZONE, CONF_PASSWORD, CONF_HOST,
 )
 from homeassistant.helpers import config_validation as cv
+from . import SCHEMA
 
-from . import DATA_RAINBIRD
-
-DOMAIN = "rainbird"
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_SWITCHES, default={}): vol.Schema(
+    SCHEMA.extend(
+        {vol.Required(CONF_SWITCHES, default={}): vol.Schema(
             {
                 cv.string: {
                     vol.Optional(CONF_FRIENDLY_NAME): cv.string,
@@ -30,28 +29,25 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                     vol.Optional(CONF_SCAN_INTERVAL): cv.string,
                 }
             }
-        )
-    }
+        )}
+    )
 )
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up Rain Bird switches over a Rain Bird controller."""
-    controller = hass.data[DATA_RAINBIRD]
-
-    devices = []
-    for dev_id, switch in config.get(CONF_SWITCHES).items():
-        devices.append(RainBirdSwitch(controller, switch, dev_id))
-    add_entities(devices, True)
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up ESPHome binary sensors based on a config entry."""
+    switch = RainBirdSwitch(RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD]),
+                            config_entry.data)
+    config_entry.unique_id = switch.unique_id
+    async_add_entities([switch], True)
 
 
 class RainBirdSwitch(SwitchDevice):
     """Representation of a Rain Bird switch."""
 
-    def __init__(self, rb, dev, dev_id):
+    def __init__(self, rb, dev):
         """Initialize a Rain Bird Switch Device."""
         self._rainbird = rb
-        self._devid = dev_id
         self._zone = int(dev.get(CONF_ZONE))
         self._name = dev.get(CONF_FRIENDLY_NAME, "Sprinkler {}".format(self._zone))
         self._state = None

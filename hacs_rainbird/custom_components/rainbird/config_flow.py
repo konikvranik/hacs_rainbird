@@ -1,20 +1,19 @@
 """Adds config flow for HDO."""
 import logging
-from collections import OrderedDict
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.const import CONF_CODE, CONF_NAME, CONF_VALUE_TEMPLATE, CONF_FORCE_UPDATE
-from homeassistant.core import callback
 
-from . import DOMAIN, DEFAULT_NAME, CONF_REFRESH_RATE, CONF_MAX_COUNT
+from homeassistant import config_entries
+from homeassistant.const import CONF_CODE, CONF_PASSWORD, CONF_HOST
+from homeassistant.core import callback
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @config_entries.HANDLERS.register(DOMAIN)
-class HDOFlowHandler(config_entries.ConfigFlow):
-    """Config flow for HDO."""
+class HDOFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Rainbird."""
 
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
@@ -24,39 +23,26 @@ class HDOFlowHandler(config_entries.ConfigFlow):
         self._errors = {}
         self._data = {}
 
-    async def async_step_user(self, user_input={}):  # pylint: disable=dangerous-default-value
+    async def async_step_user(self, user_input=None):  # pylint: disable=dangerous-default-value
         """Display the form, then store values and create entry."""
+        if user_input is None:
+            user_input = {}
         self._errors = {}
         if user_input is not None:
-            if user_input[CONF_CODE] != "":
-                # Remember Frequency
-                await self.async_set_unique_id(user_input[CONF_CODE])
+            if user_input[CONF_HOST] != "":
+                await self.async_set_unique_id(user_input[CONF_HOST])
+                self._abort_if_unique_id_configured()
                 self._data.update(user_input)
-                if CONF_REFRESH_RATE in user_input:
-                    self._data[CONF_REFRESH_RATE] = user_input[CONF_REFRESH_RATE]
                 # Call next step
                 return self.async_create_entry(title=self._data[CONF_CODE], data=self._data)
             else:
-                self._errors["base"] = "code"
-        return await self._show_user_form(user_input)
-
-    async def _show_user_form(self, user_input):
-        """Configure the form."""
-        # Defaults
-        code = ""
-        if user_input is not None:
-            if CONF_CODE in user_input:
-                code = user_input[CONF_CODE]
-        data_schema = OrderedDict()
-        data_schema[vol.Required(CONF_CODE, default=code)] = str
-        data_schema[vol.Optional(CONF_NAME, default=DEFAULT_NAME)] = str
-        data_schema[vol.Optional(CONF_VALUE_TEMPLATE)] = str
-        data_schema[vol.Optional(CONF_FORCE_UPDATE, default=True)] = bool
-        data_schema[
-            vol.Optional(CONF_REFRESH_RATE, default=86400)] = int
-        data_schema[vol.Optional(CONF_MAX_COUNT, default=5)] = int
-        form = self.async_show_form(step_id="user", data_schema=vol.Schema(data_schema), errors=self._errors)
-        return form
+                self._errors["base"] = "host"
+        return self.async_show_form(
+            step_id="user", data_schema=vol.Schema({
+                vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
+                vol.Optional(CONF_PASSWORD): str
+            })
+        )
 
     async def async_step_import(self, user_input):  # pylint: disable=unused-argument
         """Import a config entry.
@@ -94,29 +80,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update entry
             self._data.update(user_input)
-            self._data[CONF_CODE] = self.config_entry.unique_id
-            if CONF_REFRESH_RATE in user_input:
-                self._data[CONF_REFRESH_RATE] = user_input[CONF_REFRESH_RATE]
-            return self.async_create_entry(title=self._data[CONF_CODE], data=self._data)
+            self._data[CONF_HOST] = self.config_entry.unique_id
+            if CONF_PASSWORD in user_input:
+                self._data[CONF_PASSWORD] = user_input[CONF_PASSWORD]
+            return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
         else:
-            return await self._show_init_form(user_input)
-
-    async def _show_init_form(self, user_input):
-        """Configure the form."""
-        if user_input is None:
-            user_input = self.config_entry.data
-        data_schema = OrderedDict()
-        data_schema[
-            vol.Optional(CONF_NAME, default=user_input[CONF_NAME] if CONF_NAME in user_input else DEFAULT_NAME)] = str
-        data_schema[vol.Optional(CONF_VALUE_TEMPLATE, default=user_input[
-            CONF_VALUE_TEMPLATE] if CONF_VALUE_TEMPLATE in user_input else "")] = str
-        data_schema[vol.Optional(CONF_FORCE_UPDATE, default=user_input[
-            CONF_FORCE_UPDATE] if CONF_FORCE_UPDATE in user_input else True)] = bool
-        data_schema[vol.Optional(CONF_REFRESH_RATE, default=user_input[
-            CONF_REFRESH_RATE] if CONF_REFRESH_RATE in user_input else 86400)] = int
-        data_schema[vol.Optional(CONF_MAX_COUNT,
-                                 default=user_input[CONF_MAX_COUNT] if CONF_MAX_COUNT in user_input else 5)] = int
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(data_schema), errors=self._errors)
+            return self.async_show_form(
+                step_id="init", data_schema=vol.Schema({
+                    vol.Optional(CONF_PASSWORD): str
+                })
+            )
 
 
 class EmptyOptions(config_entries.OptionsFlow):

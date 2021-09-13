@@ -1,6 +1,9 @@
 start_irrigation:
   description: Start irrigation
   fields:
+    zone:
+      description: Zone to irrigate
+      example: 1
     delay:
       description: Time to irrigate
       example: '00:03:00'

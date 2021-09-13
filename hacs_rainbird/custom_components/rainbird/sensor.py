@@ -2,13 +2,12 @@
 import logging
 
 import voluptuous as vol
+from pyrainbird import RainbirdController
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import CONF_MONITORED_CONDITIONS
 import homeassistant.helpers.config_validation as cv
+from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.const import CONF_MONITORED_CONDITIONS, CONF_HOST, CONF_PASSWORD
 from homeassistant.helpers.entity import Entity
-
-from . import DATA_RAINBIRD
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,15 +23,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up a Rain Bird sensor."""
-    controller = hass.data[DATA_RAINBIRD]
-
-    sensors = []
-    for sensor_type in config.get(CONF_MONITORED_CONDITIONS):
-        sensors.append(RainBirdSensor(controller, sensor_type))
-
-    add_entities(sensors, True)
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up ESPHome binary sensors based on a config entry."""
+    config = config_entry.data
+    sensor = RainBirdSensor(RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD]),
+                            config.get(CONF_MONITORED_CONDITIONS))
+    async_add_entities([sensor], True)
 
 
 class RainBirdSensor(Entity):
