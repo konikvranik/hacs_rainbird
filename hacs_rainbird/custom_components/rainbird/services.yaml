@@ -1,0 +1,12 @@
+start_irrigation:
+  description: Start irrigation
+  fields:
+    delay:
+      description: Time to irrigate
+      example: '00:03:00'
+set_rain_delay:
+  description: ČEZ HDO.
+  fields:
+    delay:
+      description: Code
+      example: '00:02:00'

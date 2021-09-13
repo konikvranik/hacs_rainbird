@@ -1,0 +1,16 @@
+{
+  "domain": "rainbird",
+  "name": "Rainbird",
+  "version": "0.1.0",
+  "documentation": "https://www.home-assistant.io/components/rainbird",
+  "config_flow": true,
+  "requirements": [
+    "pyrainbird==0.4.3"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@konikvranik"
+  ],
+  "icon": "https://brands.home-assistant.io/_/rainbird/icon.png",
+  "logo": "https://brands.home-assistant.io/_/rainbird/logo.png"
+}
