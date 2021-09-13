@@ -1,18 +1,18 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
 import logging
 
-import voluptuous as vol
-from pyrainbird import RainbirdController
-from voluptuous import ALLOW_EXTRA
-
 import homeassistant.helpers.config_validation as cv
-from entry_data import RuntimeEntryData
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import sensor, switch
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.helpers.typing import HomeAssistantType
+from pyrainbird import RainbirdController
+from voluptuous import ALLOW_EXTRA
+
+from .entry_data import RuntimeEntryData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,24 +86,3 @@ async def update_listener(hass, entry):
     entry.data = entry.options
     await hass.config_entries.async_forward_entry_unload(entry, DOMAIN)
     hass.async_add_job(hass.config_entries.async_forward_entry_setup(entry, DOMAIN))
-
-
-def setup(hass, config):
-    """Set up the Rain Bird component."""
-    conf = config[DOMAIN]
-    server = conf.get(CONF_HOST)
-    password = conf.get(CONF_PASSWORD)
-
-    from pyrainbird import RainbirdController
-
-    controller = RainbirdController(server, password)
-
-    _LOGGER.debug("Rain Bird Controller set to: %s", server)
-
-    initial_status = controller.currentIrrigation()
-    if initial_status and initial_status["type"] != "CurrentStationsActiveResponse":
-        _LOGGER.error("Error getting state. Possible configuration issues")
-        return False
-
-    hass.data[DATA_RAINBIRD] = controller
-    return True
