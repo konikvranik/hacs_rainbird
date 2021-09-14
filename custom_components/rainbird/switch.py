@@ -3,7 +3,7 @@
 import logging
 
 import voluptuous as vol
-from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchDevice
+from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchEntity
 from homeassistant.const import (
     CONF_FRIENDLY_NAME,
     CONF_SCAN_INTERVAL,
@@ -52,7 +52,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     await hass.async_add_executor_job(add_entities, config_entry, data, async_add_entities, hass)
 
 
-class RainBirdSwitch(SwitchDevice):
+class RainBirdSwitch(SwitchEntity):
     """Representation of a Rain Bird switch."""
 
     def __init__(self, rb: RainbirdController, dev, hass, data: RuntimeEntryData = None):

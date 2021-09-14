@@ -3,6 +3,7 @@ import json
 import logging
 import os
 
+import attr
 import homeassistant
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -12,11 +13,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITIONS
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import HomeAssistantType
-from pyrainbird import RainbirdController
+from pyrainbird import ModelAndVersion, RainbirdController
 from voluptuous import ALLOW_EXTRA
 
-from .entry_data import RuntimeEntryData
+DOMAIN = "rainbird"
+
+DISPATCHER_UPDATE_ENTITY = DOMAIN + "_{entry_id}_update_{component_key}_{key}"
+DISPATCHER_REMOVE_ENTITY = DOMAIN + "_{entry_id}_remove_{component_key}_{key}"
+DISPATCHER_ON_LIST = DOMAIN + "_{entry_id}_on_list"
+DISPATCHER_ON_DEVICE_UPDATE = DOMAIN + "_{entry_id}_on_device_update"
+DISPATCHER_ON_STATE = DOMAIN + "_{entry_id}_on_state"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +39,22 @@ SENSOR_TYPES = {"rainsensor": ["Rainsensor", None, "mdi:water"]}
 SCHEMA = {vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
           vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES)}
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
+
+RAINBIRD_MODELS = {
+    0x000: ("UNKNOWN", "UNKNOWN MODEL"),
+    0x003: ("ESP_RZXe", "ESP-RZXe"),
+    0x007: ("ESP_ME", "ESP-Me"),
+    0x006: ("ST8X_WF", "ST8x-WiFi"),
+    0x005: ("ESP_TM2", "ESP-TM2"),
+    0x008: ("ST8X_WF2", "ST8x-WiFi2"),
+    0x009: ("ESP_ME3", "ESP-ME3"),
+    0x010: ("MOCK_ESP_ME2", "ESP=Me2"),
+    0x00A: ("ESP_TM2v2", "ESP-TM2"),
+    0x10A: ("ESP_TM2v3", "ESP-TM2"),
+    0x099: ("TBOS_BT", "TBOS-BT"),
+    0x107: ("ESP_MEv2", "ESP-Me"),
+    0x103: ("ESP_RZXe2", "ESP-RZXe2")
+}
 
 
 async def async_setup_entry(hass: HomeAssistantType, entry):
@@ -106,3 +130,43 @@ async def update_listener(hass, entry):
     entry.data = entry.options
     await hass.config_entries.async_forward_entry_unload(entry, DOMAIN)
     hass.async_add_job(hass.config_entries.async_forward_entry_setup(entry, DOMAIN))
+
+
+@attr.s
+class RuntimeEntryData:
+    """Store runtime data for rainbird config entries."""
+
+    entry_id = attr.ib(type=str)
+    client = attr.ib(type=RainbirdController)
+    number_of_stations = attr.ib(type=int)
+    model_and_version = attr.ib(type=ModelAndVersion, init=False)
+
+    def get_version(self):
+        return "%d.%d" % (
+            self.model_and_version.major, self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
+
+    def get_model(self):
+        return RAINBIRD_MODELS.get(self.model_and_version.model, 0)[1]
+
+    def async_update_entity(
+            self, hass: HomeAssistantType, component_key: str, key: int
+    ) -> None:
+        """Schedule the update of an entity."""
+        signal = DISPATCHER_UPDATE_ENTITY.format(
+            entry_id=self.entry_id, component_key=component_key, key=key
+        )
+        async_dispatcher_send(hass, signal)
+
+    def async_remove_entity(
+            self, hass: HomeAssistantType, component_key: str, key: int
+    ) -> None:
+        """Schedule the removal of an entity."""
+        signal = DISPATCHER_REMOVE_ENTITY.format(
+            entry_id=self.entry_id, component_key=component_key, key=key
+        )
+        async_dispatcher_send(hass, signal)
+
+    def async_update_device_state(self, hass: HomeAssistantType) -> None:
+        """Distribute an update of a core device state like availability."""
+        signal = DISPATCHER_ON_DEVICE_UPDATE.format(entry_id=self.entry_id)
+        async_dispatcher_send(hass, signal)
