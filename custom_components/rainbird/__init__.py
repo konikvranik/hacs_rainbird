@@ -41,6 +41,21 @@ SCHEMA = {vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.st
           vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES)}
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
 
+RAINBIRS_MODELS = {
+    0x003: ["ESP_RZXe", 0, "ESP-RZXe", False, 0, 6],
+    0x007: ["ESP_ME", 1, "ESP-Me", True, 4, 6],
+    0x006: ["ST8X_WF", 2, "ST8x-WiFi", False, 0, 6],
+    0x005: ["ESP_TM2", 3, "ESP-TM2", True, 3, 4],
+    0x008: ["ST8X_WF2", 4, "ST8x-WiFi2", False, 8, 6],
+    0x009: ["ESP_ME3", 5, "ESP-ME3", True, 4, 6],
+    0x010: ["MOCK_ESP_ME2", 6, "ESP=Me2", True, 4, 6],
+    0x00A: ["ESP_TM2v2", 7, "ESP-TM2", True, 3, 4],
+    0x10A: ["ESP_TM2v3", 8, "ESP-TM2", True, 3, 4],
+    0x099: ["TBOS_BT", 9, "TBOS-BT", True, 3, 8],
+    0x107: ["ESP_MEv2", 10, "ESP-Me", True, 4, 6],
+    0x103: ["ESP_RZXe2", 11, "ESP-RZXe2", False, 8, 6]
+}
+
 
 async def async_setup_entry(hass: HomeAssistantType, entry):
     """Set up ESPHome binary sensors based on a config entry."""
@@ -132,7 +147,8 @@ class RuntimeEntryData:
             self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
 
     def get_model(self):
-        return self.model_and_version.model_name
+        return RAINBIRS_MODELS[self.model_and_version.model][
+            2] if self.model_and_version.model in RAINBIRS_MODELS else "UNKNOWN MODEL"
 
     def async_update_entity(
             self, hass: HomeAssistantType, component_key: str, key: int
