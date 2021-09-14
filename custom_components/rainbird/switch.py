@@ -36,10 +36,8 @@ def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass)
             switch = RainBirdSwitch(data.client, {"zone": i, "id": config_entry.entry_id}, hass, data)
             async_add_entities([switch], True)
     else:
-        stations = data.client.get_available_stations()
-
         cnt = 0
-        for state in stations.stations.states:
+        for state in data.client.get_available_stations().stations.states:
             cnt = cnt + 1
             if state:
                 switch = RainBirdSwitch(data.client, {"zone": cnt, "id": config_entry.entry_id}, hass, data)

@@ -1,0 +1,36 @@
+{
+  "config": {
+    "title": "Rainbird",
+    "step": {
+      "user": {
+        "title": "Rainbird ovladač",
+        "description": "Zadej parametry ovladače Rainbird",
+        "data": {
+          "host": "Název hostitele ovladače Rainbird",
+          "password": "Heslo k ovladači",
+          "number_of_stations": "Počet okruhů (pokud je 0 nebo není zadáno, budou okruhy automaticky zjištěny",
+          "monitored_conditions": "Aktivní sensory"
+        }
+      }
+    },
+    "error": {
+      "host": "Hostitel musí být zadán!"
+    },
+    "abort": {
+      "single_instance_allowed": "Je povolena pouze jedna instance ovladače Rainbird."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rainbird",
+        "description": "Zadej parametry ovladače Rainbird",
+        "data": {
+          "password": "Heslo k ovladači",
+          "number_of_stations": "Počet okruhů (pokud je 0 nebo není zadáno, budou okruhy automaticky zjištěny",
+          "monitored_conditions": "Aktivní sensory"
+        }
+      }
+    }
+  }
+}

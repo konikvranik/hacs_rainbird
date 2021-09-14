@@ -5,7 +5,7 @@
   "documentation": "https://www.home-assistant.io/components/rainbird",
   "config_flow": true,
   "requirements": [
-    "pyrainbird==0.4.3"
+    "pyrainbird>=0.5.0,<0.6"
   ],
   "dependencies": [],
   "codeowners": [

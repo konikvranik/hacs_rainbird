@@ -15,8 +15,9 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import HomeAssistantType
-from pyrainbird import ModelAndVersion, RainbirdController
 from voluptuous import ALLOW_EXTRA
+
+from pyrainbird import ModelAndVersion, RainbirdController
 
 DOMAIN = "rainbird"
 
@@ -39,22 +40,6 @@ SENSOR_TYPES = {"rainsensor": ["Rainsensor", None, "mdi:water"]}
 SCHEMA = {vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
           vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES)}
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
-
-RAINBIRD_MODELS = {
-    0x000: ("UNKNOWN", "UNKNOWN MODEL"),
-    0x003: ("ESP_RZXe", "ESP-RZXe"),
-    0x007: ("ESP_ME", "ESP-Me"),
-    0x006: ("ST8X_WF", "ST8x-WiFi"),
-    0x005: ("ESP_TM2", "ESP-TM2"),
-    0x008: ("ST8X_WF2", "ST8x-WiFi2"),
-    0x009: ("ESP_ME3", "ESP-ME3"),
-    0x010: ("MOCK_ESP_ME2", "ESP=Me2"),
-    0x00A: ("ESP_TM2v2", "ESP-TM2"),
-    0x10A: ("ESP_TM2v3", "ESP-TM2"),
-    0x099: ("TBOS_BT", "TBOS-BT"),
-    0x107: ("ESP_MEv2", "ESP-Me"),
-    0x103: ("ESP_RZXe2", "ESP-RZXe2")
-}
 
 
 async def async_setup_entry(hass: HomeAssistantType, entry):
@@ -143,10 +128,11 @@ class RuntimeEntryData:
 
     def get_version(self):
         return "%d.%d" % (
-            self.model_and_version.major, self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
+            self.model_and_version.major,
+            self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
 
     def get_model(self):
-        return RAINBIRD_MODELS.get(self.model_and_version.model, 0)[1]
+        return self.model_and_version.model_name
 
     def async_update_entity(
             self, hass: HomeAssistantType, component_key: str, key: int
