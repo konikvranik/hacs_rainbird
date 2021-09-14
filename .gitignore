@@ -16,3 +16,5 @@
 /.storage/
 /.cloud/
 /.idea/
+/home-assistant.log.1
+/hacs_rainbird/.idea/hacs_rainbird.iml
