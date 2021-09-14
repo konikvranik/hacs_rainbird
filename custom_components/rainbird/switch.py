@@ -1,5 +1,5 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
-
+import asyncio
 import logging
 
 import voluptuous as vol
@@ -10,7 +10,9 @@ from homeassistant.const import (
     CONF_SWITCHES,
     CONF_TRIGGER_TIME,
     CONF_ZONE, )
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, translation
+from homeassistant.helpers.translation import async_get_component_strings
+from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import RainbirdController
 
 from . import RuntimeEntryData, DOMAIN
@@ -30,18 +32,23 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass):
+def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass: HomeAssistantType):
     if data.number_of_stations:
         for i in range(data.number_of_stations):
             switch = RainBirdSwitch(data.client, {"zone": i, "id": config_entry.entry_id}, hass, data)
             async_add_entities([switch], True)
     else:
         cnt = 0
-        for state in data.client.get_available_stations().stations.states:
-            cnt = cnt + 1
-            if state:
-                switch = RainBirdSwitch(data.client, {"zone": cnt, "id": config_entry.entry_id}, hass, data)
-                async_add_entities([switch], True)
+        stations = data.client.get_available_stations()
+        if stations:
+            for state in stations.stations.states:
+                cnt = cnt + 1
+                if state:
+                    switch = RainBirdSwitch(data.client, {"zone": cnt, "id": config_entry.entry_id}, hass, data)
+                    async_add_entities([switch], True)
+        else:
+            return False
+    return True
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -60,7 +67,7 @@ class RainBirdSwitch(SwitchEntity):
         self._rainbird = rb
         self._zone = int(dev.get(CONF_ZONE))
         self._device_id = dev.get("id")
-        self._name = dev.get(CONF_FRIENDLY_NAME, "Sprinkler {}".format(self._zone))
+        self._name = dev.get(CONF_FRIENDLY_NAME, "Irrigation circuit #{}".format(self._zone))
         self._state = None
         self._duration = dev.get(CONF_TRIGGER_TIME)
         self._attributes = {"duration": self._duration, "zone": self._zone}

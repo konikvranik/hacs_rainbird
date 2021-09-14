@@ -1,9 +1,12 @@
 """Adds config flow for HDO."""
+import datetime
 import logging
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_PASSWORD, CONF_HOST, CONF_MONITORED_CONDITIONS
+from homeassistant.const import CONF_PASSWORD, CONF_HOST, CONF_MONITORED_CONDITIONS, CONF_TRIGGER_TIME, \
+    CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
 
@@ -38,11 +41,13 @@ class HDOFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 self._errors["base"] = "host"
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema({
-                vol.Required(CONF_HOST): str,
+                vol.Required(CONF_HOST, default='rainbird.home'): str,
                 vol.Optional(CONF_PASSWORD): str,
                 vol.Optional(CONF_NUMBER_OF_STATIONS): int,
                 vol.Optional(CONF_MONITORED_CONDITIONS,
                              default=list(SENSOR_TYPES.keys())): config_validation.multi_select(SENSOR_TYPES),
+                vol.Optional(CONF_TRIGGER_TIME, default={"minutes": 2}): cv.positive_time_period_dict,
+                vol.Optional(CONF_SCAN_INTERVAL, default={"minutes": 1}): cv.positive_time_period_dict
             })
         )
 
@@ -89,10 +94,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         else:
             return self.async_show_form(
                 step_id="init", data_schema=vol.Schema({
-                    vol.Optional(CONF_PASSWORD): str,
-                    vol.Optional(CONF_NUMBER_OF_STATIONS): int,
+                    vol.Optional(CONF_PASSWORD, default=self._data.get(CONF_PASSWORD, None)): str,
+                    vol.Optional(CONF_NUMBER_OF_STATIONS, default=self._data.get(CONF_NUMBER_OF_STATIONS, None)): int,
                     vol.Optional(CONF_MONITORED_CONDITIONS,
-                                 default=list(SENSOR_TYPES.keys())): config_validation.multi_select(SENSOR_TYPES)
+                                 default=self._data.get(CONF_TRIGGER_TIME,
+                                                        list(SENSOR_TYPES.keys()))): config_validation.multi_select(
+                        SENSOR_TYPES),
+                    vol.Optional(CONF_TRIGGER_TIME,
+                                 default=self._data.get(CONF_TRIGGER_TIME,
+                                                        {"minutes": 2})): cv.positive_time_period_dict,
+                    vol.Optional(CONF_SCAN_INTERVAL,
+                                 default=self._data.get(CONF_SCAN_INTERVAL,
+                                                        {"minutes": 1})): cv.positive_time_period_dict
                 })
             )
 

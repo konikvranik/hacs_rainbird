@@ -9,7 +9,8 @@
           "host": "Host name of Rainbird controller",
           "password": "Password for controller",
           "number_of_stations": "Number of irrigation circuits (if 0 or missing, circuits will be automatically detected",
-          "monitored_conditions": "Active sensors"
+          "monitored_conditions": "Active sensors",
+          "trigger_time": "default irrigation time"
         }
       }
     },
@@ -28,7 +29,8 @@
         "data": {
           "password": "Password for controller",
           "number_of_stations": "Number of irrigation circuits (if 0 or missing, circuits will be automatically detected",
-          "monitored_conditions": "Active sensors"
+          "monitored_conditions": "Active sensors",
+          "trigger_time": "default irrigation time"
         }
       }
     }

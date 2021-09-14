@@ -1,4 +1,5 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
+import datetime
 import json
 import logging
 import os
@@ -10,7 +11,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import sensor, switch
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITIONS
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITIONS, CONF_TRIGGER_TIME, \
+    CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -37,11 +39,16 @@ DEFAULT_NAME = MANIFEST["name"]
 PLATFORM_SENSOR = "sensor"
 CONF_NUMBER_OF_STATIONS = "number_of_stations"
 SENSOR_TYPES = {"rainsensor": ["Rainsensor", None, "mdi:water"]}
-SCHEMA = {vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
-          vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES)}
+SCHEMA = {
+    vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
+    vol.Optional(CONF_NUMBER_OF_STATIONS): int,
+    vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES),
+    vol.Optional(CONF_TRIGGER_TIME): cv.positive_time_period_dict,
+    vol.Optional(CONF_SCAN_INTERVAL): cv.positive_time_period_dict
+}
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
 
-RAINBIRS_MODELS = {
+RAINBIRD_MODELS = {
     0x003: ["ESP_RZXe", 0, "ESP-RZXe", False, 0, 6],
     0x007: ["ESP_ME", 1, "ESP-Me", True, 4, 6],
     0x006: ["ST8X_WF", 2, "ST8x-WiFi", False, 0, 6],
@@ -147,8 +154,8 @@ class RuntimeEntryData:
             self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
 
     def get_model(self):
-        return RAINBIRS_MODELS[self.model_and_version.model][
-            2] if self.model_and_version.model in RAINBIRS_MODELS else "UNKNOWN MODEL"
+        return RAINBIRD_MODELS[self.model_and_version.model][
+            2] if self.model_and_version and self.model_and_version.model in RAINBIRD_MODELS else "UNKNOWN MODEL"
 
     def async_update_entity(
             self, hass: HomeAssistantType, component_key: str, key: int
