@@ -82,7 +82,7 @@ async def async_setup_entry(hass: HomeAssistantType, entry):
     def update_model_and_version():
         hass.data[DOMAIN][entry.entry_id].model_and_version = cli.get_model_and_version()
 
-    await hass.async_add_executor_job(update_model_and_version)
+    # await hass.async_add_executor_job(update_model_and_version)
 
     @callback
     def irrigation_start(call):
@@ -147,7 +147,7 @@ class RuntimeEntryData:
     entry_id = attr.ib(type=str)
     client = attr.ib(type=RainbirdController)
     number_of_stations = attr.ib(type=int)
-    model_and_version = attr.ib(type=ModelAndVersion, init=False)
+    model_and_version = attr.ib(type=ModelAndVersion, init=False, default=ModelAndVersion(-1, -1, -1))
 
     def get_version(self):
         return "%d.%d" % (
