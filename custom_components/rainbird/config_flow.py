@@ -1,5 +1,4 @@
 """Adds config flow for HDO."""
-import datetime
 import logging
 
 import homeassistant.helpers.config_validation as cv
@@ -66,10 +65,10 @@ class HDOFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
-        if config_entry.unique_id is not None:
-            return OptionsFlowHandler(config_entry)
-        else:
+        if config_entry.unique_id is None:
             return EmptyOptions(config_entry)
+        else:
+            return OptionsFlowHandler(config_entry)
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
@@ -84,14 +83,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Display the form, then store values and create entry."""
 
-        if user_input is not None:
-            # Update entry
-            self._data.update(user_input)
-            self._data[CONF_HOST] = self.config_entry.unique_id
-            if CONF_PASSWORD in user_input:
-                self._data[CONF_PASSWORD] = user_input[CONF_PASSWORD]
-            return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
-        else:
+        if user_input is None:
             return self.async_show_form(
                 step_id="init", data_schema=vol.Schema({
                     vol.Optional(CONF_PASSWORD, default=self._data.get(CONF_PASSWORD, None)): str,
@@ -108,6 +100,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                                         {"minutes": 1})): cv.positive_time_period_dict
                 })
             )
+        else:
+            # Update entry
+            self._data.update(user_input)
+            self._data[CONF_HOST] = self.config_entry.unique_id
+            if CONF_PASSWORD in user_input:
+                self._data[CONF_PASSWORD] = user_input[CONF_PASSWORD]
+            return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
 
 
 class EmptyOptions(config_entries.OptionsFlow):

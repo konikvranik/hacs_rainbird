@@ -43,8 +43,8 @@ SCHEMA = {
     vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
     vol.Optional(CONF_NUMBER_OF_STATIONS): int,
     vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES),
-    vol.Optional(CONF_TRIGGER_TIME): cv.positive_time_period_dict,
-    vol.Optional(CONF_SCAN_INTERVAL): cv.positive_time_period_dict
+    vol.Optional(CONF_TRIGGER_TIME): cv.positive_timedelta,
+    vol.Optional(CONF_SCAN_INTERVAL): cv.positive_timedelta
 }
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
 

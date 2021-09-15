@@ -10,7 +10,8 @@
           "password": "Heslo k ovladači",
           "number_of_stations": "Počet okruhů (pokud je 0 nebo není zadáno, budou okruhy automaticky zjištěny",
           "monitored_conditions": "Aktivní sensory",
-          "trigger_time": "Výchozí čas zavlažovnání"
+          "trigger_time": "Výchozí čas zavlažovnání",
+          "scan_interval": "Perioda aktualizace senzorů"
         }
       }
     },
@@ -30,7 +31,8 @@
           "password": "Heslo k ovladači",
           "number_of_stations": "Počet okruhů (pokud je 0 nebo není zadáno, budou okruhy automaticky zjištěny",
           "monitored_conditions": "Aktivní sensory",
-          "trigger_time": "Výchozí čas zavlažovnání"
+          "trigger_time": "Výchozí čas zavlažovnání",
+          "scan_interval": "Perioda aktualizace senzorů"
         }
       }
     }
