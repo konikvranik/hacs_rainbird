@@ -25,7 +25,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Rainbird",
+        "title": "Rainbird obladač {title}",
         "description": "Zadej parametry ovladače Rainbird",
         "data": {
           "password": "Heslo k ovladači",
@@ -36,6 +36,5 @@
         }
       }
     }
-  },
-  "default_name": "Zavlažovací okruh číslo {}"
+  }
 }
