@@ -76,14 +76,9 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry):
                                                                              number_of_stations=config_entry.data.get(
                                                                                  CONF_NUMBER_OF_STATIONS, None))
 
-    async def refresh_switch():
-        await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.switch.DOMAIN)
-        await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.switch.DOMAIN)
-
     @callback
     def update_model_and_version():
         hass.data[DOMAIN][config_entry.entry_id].model_and_version = cli.get_model_and_version()
-        # hass.async_create_task(refresh_switch())
 
     await hass.async_add_executor_job(update_model_and_version)
 

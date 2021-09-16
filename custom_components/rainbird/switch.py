@@ -8,7 +8,7 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
     CONF_SWITCHES,
     CONF_TRIGGER_TIME,
-    CONF_ZONE, )
+    CONF_ZONE, CONF_HOST, )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import RainbirdController
@@ -70,7 +70,8 @@ class RainBirdSwitch(SwitchEntity):
         self._rainbird = rb
         self._zone = int(device_info.get(CONF_ZONE))
         self._device_id = device_info.get("id")
-        self._name = device_info.get(CONF_FRIENDLY_NAME, "Rainbird {} #{}").format(device_info, self._zone)
+        self._name = device_info.get(CONF_FRIENDLY_NAME, "Rainbird {} #{}").format(device_info.get(CONF_HOST),
+                                                                                   self._zone)
         self._state = None
         self._duration = device_info.get(CONF_TRIGGER_TIME)
         self._attributes = {"duration": self._duration, "zone": self._zone}
@@ -115,18 +116,9 @@ class RainBirdSwitch(SwitchEntity):
         if response and response["type"] == "AcknowledgeResponse":
             self._state = False
 
-    def get_device_status(self):
-        """Get the status of the switch from Rain Bird Controller."""
-        response = self._rainbird.get_zone_state(self._zone)
-        if response is None:
-            return None
-        if isinstance(response, dict) and "sprinklers" in response:
-            return response["sprinklers"][self._zone]
-
     def update(self):
         """Update switch status."""
-        self._state = self.get_device_status()
-        pass
+        self._state = self._rainbird.get_zone_state(self._zone)
 
     @property
     def is_on(self):
