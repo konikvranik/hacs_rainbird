@@ -1,15 +1,13 @@
-start_irrigation:
-  description: Start irrigation
+command:
+  description: Send Rainbird command to controller
   fields:
-    zone:
-      description: Zone to irrigate
-      example: 1
-    delay:
-      description: Time to irrigate
-      example: '00:03:00'
-set_rain_delay:
-  description: ČEZ HDO.
-  fields:
-    delay:
-      description: Code
-      example: '00:02:00'
+    id:
+      description: Identification of the command to pair with response event
+      example: myCallToIrrigateZone1
+    command:
+      description: Command to call
+      example: CommandSupportRequest
+    parameters:
+      description: Parameters of the command
+      example: |-
+        commandToTest: '30'

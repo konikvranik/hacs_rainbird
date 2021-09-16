@@ -1,5 +1,4 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
-import asyncio
 import logging
 
 import voluptuous as vol
@@ -10,8 +9,7 @@ from homeassistant.const import (
     CONF_SWITCHES,
     CONF_TRIGGER_TIME,
     CONF_ZONE, )
-from homeassistant.helpers import config_validation as cv, translation
-from homeassistant.helpers.translation import async_get_component_strings
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import RainbirdController
 
@@ -35,7 +33,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass: HomeAssistantType):
     if data.number_of_stations:
         for i in range(data.number_of_stations):
-            switch = RainBirdSwitch(data.client, {"zone": i, "id": config_entry.entry_id}, hass, data)
+            switch = RainBirdSwitch(data.client,
+                                    {"zone": i, "id": config_entry.entry_id, **config_entry.data},
+                                    hass, data)
             async_add_entities([switch], True)
     else:
         cnt = 0
@@ -44,7 +44,8 @@ def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass:
             for state in stations.stations.states:
                 cnt = cnt + 1
                 if state:
-                    switch = RainBirdSwitch(data.client, {"zone": cnt, "id": config_entry.entry_id}, hass, data)
+                    switch = RainBirdSwitch(data.client,
+                                            {"zone": cnt, "id": config_entry.entry_id, **config_entry.data}, hass, data)
                     async_add_entities([switch], True)
         else:
             return False
@@ -60,16 +61,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class RainBirdSwitch(SwitchEntity):
     """Representation of a Rain Bird switch."""
 
-    def __init__(self, rb: RainbirdController, dev, hass, data: RuntimeEntryData = None):
+    def __init__(self, rb: RainbirdController, device_info: dict, hass: HomeAssistantType,
+                 data: RuntimeEntryData = None):
         """Initialize a Rain Bird Switch Device."""
+        self._icon = 'mdi:sprinkler-variant'
         self._data = data
         self._hass = hass
         self._rainbird = rb
-        self._zone = int(dev.get(CONF_ZONE))
-        self._device_id = dev.get("id")
-        self._name = dev.get(CONF_FRIENDLY_NAME, "Irrigation circuit #{}".format(self._zone))
+        self._zone = int(device_info.get(CONF_ZONE))
+        self._device_id = device_info.get("id")
+        self._name = device_info.get(CONF_FRIENDLY_NAME, "Rainbird {} #{}").format(device_info, self._zone)
         self._state = None
-        self._duration = dev.get(CONF_TRIGGER_TIME)
+        self._duration = device_info.get(CONF_TRIGGER_TIME)
         self._attributes = {"duration": self._duration, "zone": self._zone}
 
     @property
@@ -114,7 +117,7 @@ class RainBirdSwitch(SwitchEntity):
 
     def get_device_status(self):
         """Get the status of the switch from Rain Bird Controller."""
-        response = self._rainbird.get_current_irrigation()
+        response = self._rainbird.get_zone_state(self._zone)
         if response is None:
             return None
         if isinstance(response, dict) and "sprinklers" in response:
@@ -123,8 +126,14 @@ class RainBirdSwitch(SwitchEntity):
     def update(self):
         """Update switch status."""
         self._state = self.get_device_status()
+        pass
 
     @property
     def is_on(self):
         """Return true if switch is on."""
         return self._state
+
+    @property
+    def icon(self):
+        """Return icon."""
+        return self._icon

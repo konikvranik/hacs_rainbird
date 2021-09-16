@@ -1,11 +1,12 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
+from __future__ import annotations
+
 import logging
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.binary_sensor import PLATFORM_SCHEMA, BinarySensorEntity
 from homeassistant.const import CONF_MONITORED_CONDITIONS
-from homeassistant.helpers.entity import Entity
 from pyrainbird import RainbirdController
 
 from . import SENSOR_TYPES, DOMAIN, RuntimeEntryData
@@ -25,15 +26,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up ESPHome binary sensors based on a config entry."""
-    data = hass.data.get(DOMAIN)[config_entry.entry_id]
-    config = config_entry.data
-    controller = data.client
-    sensor = RainBirdSensor(controller, config.get(CONF_MONITORED_CONDITIONS)[0], hass, data,
-                            config_entry.entry_id)
+    runtime_data = hass.data.get(DOMAIN)[config_entry.entry_id]
+    config_entry_data = config_entry.data
+    controller = runtime_data.client
+    sensor = BiStateRainBirdSensor(controller, config_entry_data.get(CONF_MONITORED_CONDITIONS)[0], hass, runtime_data,
+                                   config_entry.entry_id)
     async_add_entities([sensor], True)
 
 
-class RainBirdSensor(Entity):
+class BiStateRainBirdSensor(BinarySensorEntity):
     """A sensor implementation for Rain Bird device."""
 
     def __init__(self, controller: RainbirdController, sensor_type, hass, data: RuntimeEntryData = None,
@@ -47,22 +48,11 @@ class RainBirdSensor(Entity):
         self._icon = SENSOR_TYPES[self._sensor_type][2]
         self._unit_of_measurement = SENSOR_TYPES[self._sensor_type][1]
         self._device_id = device_id
-        self._state = None
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
 
     def update(self):
         """Get the latest data and updates the states."""
         _LOGGER.debug("Updating sensor: %s", self._name)
-        if self._sensor_type == "rainsensor":
-            result = self._controller.get_rain_sensor_state()
-            if result and result["type"] == "CurrentRainSensorStateResponse":
-                self._state = result["sensorState"]
-            else:
-                self._state = None
+        _attr_is_on = self._controller.get_rain_sensor_state()
 
     @property
     def name(self):

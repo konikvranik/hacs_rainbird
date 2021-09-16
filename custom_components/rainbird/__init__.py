@@ -1,5 +1,4 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
-import datetime
 import json
 import logging
 import os
@@ -9,17 +8,15 @@ import homeassistant
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.components import sensor, switch
+from homeassistant.components import binary_sensor, switch
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITIONS, CONF_TRIGGER_TIME, \
     CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
-from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import HomeAssistantType
-from voluptuous import ALLOW_EXTRA
-
 from pyrainbird import ModelAndVersion, RainbirdController
+from voluptuous import ALLOW_EXTRA
 
 DOMAIN = "rainbird"
 
@@ -37,6 +34,7 @@ DOMAIN = MANIFEST["domain"]
 DEFAULT_NAME = MANIFEST["name"]
 
 PLATFORM_SENSOR = "sensor"
+PLATFORM_BINARY_SENSOR = "binary_sensor"
 CONF_NUMBER_OF_STATIONS = "number_of_stations"
 SENSOR_TYPES = {"rainsensor": ["Rainsensor", None, "mdi:water"]}
 
@@ -65,39 +63,53 @@ RAINBIRD_MODELS = {
 }
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry):
+async def async_setup_entry(hass: HomeAssistantType, config_entry):
     """Set up ESPHome binary sensors based on a config entry."""
-    _LOGGER.debug(entry)
-    config = CONFIG_SCHEMA({DOMAIN: dict(entry.data)})
+    _LOGGER.debug(config_entry)
+    config = CONFIG_SCHEMA({DOMAIN: dict(config_entry.data)})
     _LOGGER.debug(config)
 
-    cli = RainbirdController(entry.data[CONF_HOST], entry.data[CONF_PASSWORD])
+    cli = RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD])
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    entry_data = hass.data[DOMAIN][entry.entry_id] = RuntimeEntryData(client=cli, entry_id=entry.entry_id,
-                                                                      number_of_stations=entry.data.get(
-                                                                          CONF_NUMBER_OF_STATIONS, None))
+    entry_data = hass.data[DOMAIN][config_entry.entry_id] = RuntimeEntryData(client=cli, entry_id=config_entry.entry_id,
+                                                                             number_of_stations=config_entry.data.get(
+                                                                                 CONF_NUMBER_OF_STATIONS, None))
+
+    async def refresh_switch():
+        await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.switch.DOMAIN)
+        await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.switch.DOMAIN)
 
     @callback
     def update_model_and_version():
-        hass.data[DOMAIN][entry.entry_id].model_and_version = cli.get_model_and_version()
+        hass.data[DOMAIN][config_entry.entry_id].model_and_version = cli.get_model_and_version()
+        # hass.async_create_task(refresh_switch())
 
-    # await hass.async_add_executor_job(update_model_and_version)
+    await hass.async_add_executor_job(update_model_and_version)
+
+    async def rainbird_command_call(call):
+        params = call.data['parameters']
+        if params is None:
+            params = []
+        elif not isinstance(params, list):
+            params = [params]
+
+        response = await hass.async_add_executor_job(entry_data.client.command, call.data['command'], *params)
+        # result = entry_data.client.command(call.data['command'], call.data['parameters'])
+        hass.bus.async_fire("rainbird_command_response_event", {'id': call.data['id'], 'response': response})
 
     @callback
-    def irrigation_start(call):
-        """My first service."""
+    def rainbird_command_service(call):
+        """Rainbird command service."""
         _LOGGER.debug("Called HDO: %s", call)
-        zone = call.data["zone"]
-        response = entry_data.client.irrigate_zone(int(zone), int(call.data["duration"]))
-        if response and response["type"] == "AcknowledgeResponse":
-            return True
+        hass.async_create_task(rainbird_command_call(call))
 
     # Register our service with Home Assistant.
-    hass.services.async_register(DOMAIN, "start_irrigation", irrigation_start)
-    hass.services.async_register(DOMAIN, "set_rain_delay", irrigation_start)
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, homeassistant.components.sensor.DOMAIN))
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, homeassistant.components.switch.DOMAIN))
+    hass.services.async_register(DOMAIN, "command", rainbird_command_service)
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.binary_sensor.DOMAIN))
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.switch.DOMAIN))
     # Return boolean to indicate that initialization was successfully.
     return True
 
@@ -127,17 +139,21 @@ async def platform_async_setup_entry(
 async def async_remove_entry(hass, config_entry):
     """Handle removal of an entry."""
     try:
-        await hass.config_entries.async_forward_entry_unload(config_entry, DOMAIN)
+        await hass.config_entries.async_forward_entry_unload(config_entry,
+                                                             homeassistant.components.binary_sensor.DOMAIN)
+        await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.switch.DOMAIN)
         _LOGGER.info("Successfully removed sensor from the HDO integration")
     except ValueError:
         pass
 
 
-async def update_listener(hass, entry):
+async def update_listener(hass, config_entry):
     """Update listener."""
-    entry.data = entry.options
-    await hass.config_entries.async_forward_entry_unload(entry, DOMAIN)
-    hass.async_add_job(hass.config_entries.async_forward_entry_setup(entry, DOMAIN))
+    config_entry.data = config_entry.options
+    await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.binary_sensor.DOMAIN)
+    await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.switch.DOMAIN)
+    await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.binary_sensor.DOMAIN)
+    await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.switch.DOMAIN)
 
 
 @attr.s
@@ -147,7 +163,7 @@ class RuntimeEntryData:
     entry_id = attr.ib(type=str)
     client = attr.ib(type=RainbirdController)
     number_of_stations = attr.ib(type=int)
-    model_and_version = attr.ib(type=ModelAndVersion, init=False, default=ModelAndVersion(-1, -1, -1))
+    model_and_version = attr.ib(type=ModelAndVersion, init=False)
 
     def get_version(self):
         return "%d.%d" % (
@@ -157,26 +173,3 @@ class RuntimeEntryData:
     def get_model(self):
         return RAINBIRD_MODELS[self.model_and_version.model][
             2] if self.model_and_version and self.model_and_version.model in RAINBIRD_MODELS else "UNKNOWN MODEL"
-
-    def async_update_entity(
-            self, hass: HomeAssistantType, component_key: str, key: int
-    ) -> None:
-        """Schedule the update of an entity."""
-        signal = DISPATCHER_UPDATE_ENTITY.format(
-            entry_id=self.entry_id, component_key=component_key, key=key
-        )
-        async_dispatcher_send(hass, signal)
-
-    def async_remove_entity(
-            self, hass: HomeAssistantType, component_key: str, key: int
-    ) -> None:
-        """Schedule the removal of an entity."""
-        signal = DISPATCHER_REMOVE_ENTITY.format(
-            entry_id=self.entry_id, component_key=component_key, key=key
-        )
-        async_dispatcher_send(hass, signal)
-
-    def async_update_device_state(self, hass: HomeAssistantType) -> None:
-        """Distribute an update of a core device state like availability."""
-        signal = DISPATCHER_ON_DEVICE_UPDATE.format(entry_id=self.entry_id)
-        async_dispatcher_send(hass, signal)
