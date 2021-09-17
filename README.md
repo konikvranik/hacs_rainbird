@@ -19,7 +19,7 @@ There is currently support for the following device types within Home Assistant:
 
 ## Installation
 
-Copy the content of the `custom_components` folder to `custom_components` folder in your HA config directory, or add this repository to your [HACS](https://github.com/hacs/integration) integration.
+Copy the content of the `custom_components` folder to `custom_components` folder in your HA config directory or add this repository (`https://github.com/konikvranik/hacs_rainbird.git`) to your [HACS](https://github.com/hacs/integration) integration.
 
 ## Configuration
 
