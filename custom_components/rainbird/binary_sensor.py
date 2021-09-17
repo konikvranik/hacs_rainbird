@@ -55,4 +55,4 @@ class BiStateRainBirdSensor(RainbirdEntity, BinarySensorEntity):
 
     @property
     def icon(self):
-        return 'mdi:water-check' if self.is_on else 'water-remove-outline'
+        return 'mdi:water-check' if self.is_on else 'mdi:water-remove-outline'
