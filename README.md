@@ -17,6 +17,10 @@ There is currently support for the following device types within Home Assistant:
 - [Binary Sensor](https://www.home-assistant.io/integrations/binary_sensor/)
 - [Switch](https://www.home-assistant.io/integrations/switch)
 
+## Installation
+
+Copy the content of the `custom_components` folder to `custom_components` folder in your HA config directory, or add this repository to your [HACS](https://github.com/hacs/integration) integration.
+
 ## Configuration
 
 Use UI to add new integration. You can add multiple Rainbird controllers.
