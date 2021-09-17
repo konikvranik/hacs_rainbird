@@ -40,7 +40,7 @@ Switches are automatically added for all available zones of configured controlle
 ## Services
 
 The Rain Bird integration registers the `command` service, which allows you to sent arbitrary Rainbird commands to the controller.
-Please see https://github.com/jbarrancos/pyrainbird/blob/master/pyrainbird/resources/sipcommands.json for available commands
+Please see [commands in pyrainbird project](https://github.com/jbarrancos/pyrainbird/blob/master/pyrainbird/resources/sipcommands.json) for available commands
 
 | Service | Description |
 | ------- | ----------- |
