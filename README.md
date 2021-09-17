@@ -1,4 +1,4 @@
-# Rain Bird
+# Rain Bird [Home ASsistant](https://www.home-assistant.io/) integration
 
 Instructions on how to integrate your Rain Bird LNK WiFi Module within Home Assistant.
 
