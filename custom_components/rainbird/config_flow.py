@@ -29,7 +29,7 @@ async def show_form(flow: FlowHandler, step: str, first_time: bool, data=None):
             SENSOR_TYPES),
         vol.Optional(CONF_TRIGGER_TIME,
                      default=data.get(CONF_TRIGGER_TIME, {"minutes": 2})): cv.positive_time_period_dict,
-        vol.Optional(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, 1)): positive_time_period_dict
+        vol.Optional(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, 1)): cv.positive_time_period_dict
     })
     return flow.async_show_form(
         step_id=step, data_schema=vol.Schema(dict_), description_placeholders={"host": data.get(CONF_HOST, '')}
