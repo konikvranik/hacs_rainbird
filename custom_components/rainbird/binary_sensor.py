@@ -39,14 +39,14 @@ class BiStateRainBirdSensor(RainbirdEntity, BinarySensorEntity):
     def __init__(self, controller: RainbirdController, hass, data: RuntimeEntryData = None, device_id=None):
         """Initialize the Rain Bird sensor."""
         self._sensor_type = "rainsensor"
-        super(BiStateRainBirdSensor, self).__init__(hass, controller, device_id, SENSOR_TYPES[self._sensor_type][0], data,
-                                             SENSOR_TYPES[self._sensor_type][2])
-        self._unit_of_measurement = SENSOR_TYPES[self._sensor_type][1]
+        super(BiStateRainBirdSensor, self).__init__(hass, controller, device_id, SENSOR_TYPES[self._sensor_type][0],
+                                                    data,
+                                                    SENSOR_TYPES[self._sensor_type][2])
 
     def update(self):
         """Get the latest data and updates the states."""
         _LOGGER.debug("Updating sensor: %s", self._name)
-        _attr_is_on = self._controller.get_rain_sensor_state()
+        self._attr_is_on = self._controller.get_rain_sensor_state()
 
     @property
     def unique_id(self):
@@ -54,6 +54,5 @@ class BiStateRainBirdSensor(RainbirdEntity, BinarySensorEntity):
         return "%s_%s" % (DOMAIN, self._sensor_type)
 
     @property
-    def unit_of_measurement(self):
-        """Return the units of measurement."""
-        return self._unit_of_measurement
+    def icon(self):
+        return 'mdi:water-check' if self.is_on else 'water-remove-outline'
