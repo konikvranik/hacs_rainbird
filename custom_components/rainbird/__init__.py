@@ -1,4 +1,5 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
+
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITI
     CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import ModelAndVersion, RainbirdController
 from voluptuous import ALLOW_EXTRA
@@ -69,7 +71,8 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry):
     config = CONFIG_SCHEMA({DOMAIN: dict(config_entry.data)})
     _LOGGER.debug(config)
 
-    cli = RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD])
+    cli = RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD],
+                             update_delay=config_entry.data[CONF_SCAN_INTERVAL], retry_sleep=3, retry=7)
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
     entry_data = hass.data[DOMAIN][config_entry.entry_id] = RuntimeEntryData(client=cli, entry_id=config_entry.entry_id,
@@ -96,7 +99,6 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry):
     @callback
     def rainbird_command_service(call):
         """Rainbird command service."""
-        _LOGGER.debug("Called HDO: %s", call)
         hass.async_create_task(rainbird_command_call(call))
 
     # Register our service with Home Assistant.
@@ -168,3 +170,42 @@ class RuntimeEntryData:
     def get_model(self):
         return RAINBIRD_MODELS[self.model_and_version.model][
             2] if self.model_and_version and self.model_and_version.model in RAINBIRD_MODELS else "UNKNOWN MODEL"
+
+
+class RainbirdEntity(Entity):
+    def __init__(self, hass, controller, device_id, name, data, icon, attributes=None):
+        self._hass = hass
+        self._controller = controller
+        self._device_id = device_id
+        self._name = name
+        self._data = data
+        self._icon = icon
+        self._attributes = attributes
+
+    @property
+    def name(self):
+        """Return the name of this camera."""
+        return self._name
+
+    @property
+    def device_info(self):
+        """Information about this entity/device."""
+
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+            # If desired, the name for the device could be different to the entity
+            "name": "Rainbird controller",
+            "sw_version": self._data.get_version(),
+            "model": self._data.get_model(),
+            "manufacturer": "Rainbird",
+        }
+
+    @property
+    def device_state_attributes(self):
+        """Return state attributes."""
+        return self._attributes
+
+    @property
+    def icon(self):
+        """Return icon."""
+        return self._icon

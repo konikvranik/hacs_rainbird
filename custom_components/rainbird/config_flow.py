@@ -25,17 +25,18 @@ async def show_form(flow: FlowHandler, step: str, first_time: bool, data=None):
         vol.Optional(CONF_PASSWORD, default=data.get(CONF_PASSWORD, None)): str,
         vol.Optional(CONF_NUMBER_OF_STATIONS, default=data.get(CONF_NUMBER_OF_STATIONS, 0)): int,
         vol.Optional(CONF_MONITORED_CONDITIONS,
-                     default=data.get(CONF_MONITORED_CONDITIONS, list(SENSOR_TYPES.keys()))): cv.multi_select(SENSOR_TYPES),
+                     default=data.get(CONF_MONITORED_CONDITIONS, list(SENSOR_TYPES.keys()))): cv.multi_select(
+            SENSOR_TYPES),
         vol.Optional(CONF_TRIGGER_TIME,
                      default=data.get(CONF_TRIGGER_TIME, {"minutes": 2})): cv.positive_time_period_dict,
-        vol.Optional(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, 1)): int
+        vol.Optional(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, 1)): positive_time_period_dict
     })
     return flow.async_show_form(
         step_id=step, data_schema=vol.Schema(dict_), description_placeholders={"host": data.get(CONF_HOST, '')}
     )
 
 
-def fix_time_in_dict(data, key):
+def time_to_secs(data, key):
     if key in data and type(data[key]) == dict:
         data[key] = datetime.timedelta(data[key])
     if key in data and type(data[key]) == datetime.timedelta:
@@ -65,7 +66,8 @@ class ConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             if user_input[CONF_HOST]:
                 await self.async_set_unique_id(user_input[CONF_HOST])
                 self._abort_if_unique_id_configured()
-                fix_time_in_dict(user_input, CONF_TRIGGER_TIME)
+                time_to_secs(user_input, CONF_TRIGGER_TIME)
+                time_to_secs(user_input, CONF_SCAN_INTERVAL)
                 self._data.update(user_input)
                 # Call next step
                 return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
@@ -94,6 +96,11 @@ class ConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             return OptionsFlowHandler(config_entry)
 
 
+def time_to_dict(data, key):
+    if key in data and type(data[key]) == int:
+        data.update({key: secs_to_dime_dict(data[key])})
+
+
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Change the configuration."""
 
@@ -108,13 +115,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Display the form, then store values and create entry."""
 
         if user_input is None:
-            if CONF_TRIGGER_TIME in self._data and type(self._data[CONF_TRIGGER_TIME]) == int:
-                self._data.update({CONF_TRIGGER_TIME: secs_to_dime_dict(self._data[CONF_TRIGGER_TIME])})
+            time_to_dict(self._data, CONF_TRIGGER_TIME)
+            time_to_dict(self._data, CONF_SCAN_INTERVAL)
             return await show_form(self, "init", False, self._data)
         else:
             # Update entry
             self._data.update(user_input)
-            fix_time_in_dict(self._data, CONF_TRIGGER_TIME)
+            time_to_secs(self._data, CONF_TRIGGER_TIME)
+            time_to_secs(user_input, CONF_SCAN_INTERVAL)
             return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
 
 
