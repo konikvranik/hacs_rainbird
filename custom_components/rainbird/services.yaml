@@ -4,9 +4,12 @@ command:
     id:
       description: Identification of the command to pair with response event
       example: myCallToIrrigateZone1
+    host:
+      description: Hostname of already configured controller
+      example: rainbird.home
     command:
       description: Command to call
-      example: CommandSupportRequest
+      example: CommandSupport
     parameters:
       description: Parameters of the command
       example: |-

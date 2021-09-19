@@ -71,17 +71,23 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry):
     config = CONFIG_SCHEMA({DOMAIN: dict(config_entry.data)})
     _LOGGER.debug(config)
 
-    cli = RainbirdController(config_entry.data[CONF_HOST], config_entry.data[CONF_PASSWORD],
+    host_ = config_entry.data[CONF_HOST]
+    cli = RainbirdController(host_, config_entry.data[CONF_PASSWORD],
                              update_delay=config_entry.data[CONF_SCAN_INTERVAL], retry_sleep=3, retry=7)
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    entry_data = hass.data[DOMAIN][config_entry.entry_id] = RuntimeEntryData(client=cli, entry_id=config_entry.entry_id,
-                                                                             number_of_stations=config_entry.data.get(
-                                                                                 CONF_NUMBER_OF_STATIONS, None))
+    hass_data_raibird_ = hass.data[DOMAIN]
+    hass_data_raibird_[config_entry.entry_id] = RuntimeEntryData(client=cli, entry_id=config_entry.entry_id,
+                                                                 number_of_stations=config_entry.data.get(
+                                                                     CONF_NUMBER_OF_STATIONS, None))
+    if 'controllers' not in hass_data_raibird_:
+        hass_data_raibird_['controllers'] = {}
+    hass_data_controllers_ = hass_data_raibird_['controllers']
+    hass_data_controllers_[host_] = cli
 
     @callback
     def update_model_and_version():
-        hass.data[DOMAIN][config_entry.entry_id].model_and_version = cli.get_model_and_version()
+        hass_data_raibird_[config_entry.entry_id].model_and_version = cli.get_model_and_version()
 
     await hass.async_add_executor_job(update_model_and_version)
 
@@ -92,8 +98,8 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry):
         elif not isinstance(params, list):
             params = [params]
 
-        response = await hass.async_add_executor_job(entry_data.client.command, call.data['command'], *params)
-        # result = entry_data.client.command(call.data['command'], call.data['parameters'])
+        response = await hass.async_add_executor_job(hass_data_controllers_[call.data['host']].command,
+                                                     call.data['command'], *params)
         hass.bus.async_fire("rainbird_command_response_event", {'id': call.data['id'], 'response': response})
 
     @callback
