@@ -4,12 +4,15 @@
       "user": {
         "description": "Setup new Rainbird controller",
         "data": {
-          "host": "Host name of Rainbird controller",
+          "name": "Friendly name of this rainbird device",
+          "host": "Hostname or IP of Rainbird controller",
           "password": "Password for controller",
-          "number_of_stations": "Number of irrigation circuits (if 0 or missing, circuits will be automatically detected",
+          "number_of_stations": "Number of irrigation circuits (0 = auto)",
           "monitored_conditions": "Active sensors",
-          "trigger_time": "default irrigation time",
-          "scan_interval": "Sensor update period"
+          "trigger_time": "Default irrigation time",
+          "scan_interval": "Integration update interval",
+          "retry_count": "Number of retries",
+          "retry_delay": "Delay in seconds between each retry"
         }
       }
     },
@@ -23,13 +26,16 @@
   "options": {
     "step": {
       "init": {
-        "description": "Setup Rainbird controller at {host}",
+        "description": "Setup {name}",
         "data": {
+          "host": "Hostname or IP of Rainbird controller",
           "password": "Password for controller",
-          "number_of_stations": "Number of irrigation circuits (if 0, circuits will be automatically detected",
+          "number_of_stations": "Number of irrigation circuits (0 = auto)",
           "monitored_conditions": "Active sensors",
-          "trigger_time": "default irrigation time",
-          "scan_interval": "Sensor update period"
+          "trigger_time": "Default irrigation time",
+          "scan_interval": "Integration update interval",
+          "retry_count": "Number of retries",
+          "retry_delay": "Delay in seconds between each retry"
         }
       }
     }

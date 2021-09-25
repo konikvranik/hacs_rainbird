@@ -1,17 +1,15 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
 
-import json
 import logging
-import os
 
 import attr
 import homeassistant
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.components import binary_sensor, switch
+from homeassistant.components import binary_sensor, switch, number
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITIONS, CONF_TRIGGER_TIME, \
+from homeassistant.const import CONF_NAME, CONF_HOST, CONF_PASSWORD, CONF_MONITORED_CONDITIONS, CONF_TRIGGER_TIME, \
     CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation
@@ -20,74 +18,57 @@ from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import ModelAndVersion, RainbirdController
 from voluptuous import ALLOW_EXTRA
 
-DOMAIN = "rainbird"
+from .const import DOMAIN, SENSOR_TYPES, CONF_NUMBER_OF_STATIONS, RAINBIRD_MODELS, CONF_RETRY_DELAY, CONF_RETRY_COUNT
 
-DISPATCHER_UPDATE_ENTITY = DOMAIN + "_{entry_id}_update_{component_key}_{key}"
-DISPATCHER_REMOVE_ENTITY = DOMAIN + "_{entry_id}_remove_{component_key}_{key}"
-DISPATCHER_ON_LIST = DOMAIN + "_{entry_id}_on_list"
-DISPATCHER_ON_DEVICE_UPDATE = DOMAIN + "_{entry_id}_on_device_update"
-DISPATCHER_ON_STATE = DOMAIN + "_{entry_id}_on_state"
-
-_LOGGER = logging.getLogger(__name__)
-
-MANIFEST = json.load(open("%s/manifest.json" % os.path.dirname(os.path.realpath(__file__))))
-VERSION = MANIFEST["version"]
-DOMAIN = MANIFEST["domain"]
-DEFAULT_NAME = MANIFEST["name"]
-
-PLATFORM_SENSOR = "sensor"
-PLATFORM_BINARY_SENSOR = "binary_sensor"
-CONF_NUMBER_OF_STATIONS = "number_of_stations"
-SENSOR_TYPES = {"rainsensor": ["Rainsensor", None, "mdi:water"]}
 
 SCHEMA = {
-    vol.Required(CONF_HOST): cv.string, vol.Required(CONF_PASSWORD): cv.string,
+    vol.Required(CONF_NAME): cv.string,
+    vol.Required(CONF_HOST): cv.string,
+    vol.Required(CONF_PASSWORD): cv.string,
     vol.Optional(CONF_NUMBER_OF_STATIONS): int,
     vol.Optional(CONF_MONITORED_CONDITIONS): config_validation.multi_select(SENSOR_TYPES),
     vol.Optional(CONF_TRIGGER_TIME): int,
-    vol.Optional(CONF_SCAN_INTERVAL): int
+    vol.Optional(CONF_SCAN_INTERVAL): int,
+    vol.Optional(CONF_RETRY_COUNT): int,
+    vol.Optional(CONF_RETRY_DELAY): int
 }
+
 CONFIG_SCHEMA = vol.Schema({vol.Optional(DOMAIN): vol.Schema(SCHEMA)}, extra=ALLOW_EXTRA)
+_LOGGER = logging.getLogger(__name__)
 
-RAINBIRD_MODELS = {
-    0x003: ["ESP_RZXe", 0, "ESP-RZXe", False, 0, 6],
-    0x007: ["ESP_ME", 1, "ESP-Me", True, 4, 6],
-    0x006: ["ST8X_WF", 2, "ST8x-WiFi", False, 0, 6],
-    0x005: ["ESP_TM2", 3, "ESP-TM2", True, 3, 4],
-    0x008: ["ST8X_WF2", 4, "ST8x-WiFi2", False, 8, 6],
-    0x009: ["ESP_ME3", 5, "ESP-ME3", True, 4, 6],
-    0x010: ["MOCK_ESP_ME2", 6, "ESP=Me2", True, 4, 6],
-    0x00A: ["ESP_TM2v2", 7, "ESP-TM2", True, 3, 4],
-    0x10A: ["ESP_TM2v3", 8, "ESP-TM2", True, 3, 4],
-    0x099: ["TBOS_BT", 9, "TBOS-BT", True, 3, 8],
-    0x107: ["ESP_MEv2", 10, "ESP-Me", True, 4, 6],
-    0x103: ["ESP_RZXe2", 11, "ESP-RZXe2", False, 8, 6]
-}
-
+def get_rainbird_controller(data):
+    return RainbirdController(
+        data[CONF_HOST],
+        data[CONF_PASSWORD],
+        update_delay=data[CONF_SCAN_INTERVAL],
+        retry_sleep=data[CONF_RETRY_DELAY],
+        retry=data[CONF_RETRY_COUNT])
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry):
-    """Set up ESPHome binary sensors based on a config entry."""
+    """Set up rainbird from a config entry."""
     _LOGGER.debug(config_entry)
     config = CONFIG_SCHEMA({DOMAIN: dict(config_entry.data)})
     _LOGGER.debug(config)
 
-    host_ = config_entry.data[CONF_HOST]
-    cli = RainbirdController(host_, config_entry.data[CONF_PASSWORD],
-                             update_delay=config_entry.data[CONF_SCAN_INTERVAL], retry_sleep=3, retry=7)
+    rainbird_api = get_rainbird_controller(config_entry.data)
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    hass_data_raibird_ = hass.data[DOMAIN]
-    hass_data_raibird_[config_entry.entry_id] = RuntimeEntryData(client=cli, entry_id=config_entry.entry_id,
-                                                                 number_of_stations=config_entry.data.get(
-                                                                     CONF_NUMBER_OF_STATIONS, None))
-    if 'controllers' not in hass_data_raibird_:
-        hass_data_raibird_['controllers'] = {}
-    hass_data_controllers_ = hass_data_raibird_['controllers']
-    hass_data_controllers_[host_] = cli
+    hass_data_rainbird_ = hass.data[DOMAIN]
+    hass_data_rainbird_[config_entry.entry_id] = RuntimeEntryData(
+        client=rainbird_api,
+        entry_id=config_entry.entry_id,
+        serial=config_entry.entry_id,
+        number_of_stations=config_entry.data.get(CONF_NUMBER_OF_STATIONS, None)
+    )
+    if 'controllers' not in hass_data_rainbird_:
+        hass_data_rainbird_['controllers'] = {}
+    hass_data_controllers_ = hass_data_rainbird_['controllers']
+    hass_data_controllers_[config_entry.entry_id] = rainbird_api
 
     @callback
     def update_model_and_version():
-        hass_data_raibird_[config_entry.entry_id].model_and_version = cli.get_model_and_version()
+        hass_data_rainbird_[config_entry.entry_id].model_and_version = rainbird_api.get_model_and_version()
+        hass_data_rainbird_[config_entry.entry_id].serial = rainbird_api.get_serial_number()
 
     await hass.async_add_executor_job(update_model_and_version)
 
@@ -113,30 +94,10 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry):
         hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.binary_sensor.DOMAIN))
     hass.async_create_task(
         hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.switch.DOMAIN))
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.number.DOMAIN))
     # Return boolean to indicate that initialization was successfully.
     return True
-
-
-async def platform_async_setup_entry(
-        hass: HomeAssistantType,
-        config_entry: ConfigEntry,
-        async_add_entities,
-        *,
-        component_key: str,
-        info_type,
-        entity_type,
-        state_type,
-) -> bool:
-    """Set up this integration using UI."""
-    if config_entry.source == config_entries.SOURCE_IMPORT:
-        # We get here if the integration is set up using YAML
-        hass.async_create_task(hass.config_entries.async_remove(config_entry.entry_id))
-        return False
-    # Print startup message
-    config_entry.options = config_entry.data
-    config_entry.add_update_listener(update_listener)
-    # Add sensor
-    return await hass.config_entries.async_forward_entry_setup(config_entry, DOMAIN)
 
 
 async def async_remove_entry(hass, config_entry):
@@ -145,6 +106,7 @@ async def async_remove_entry(hass, config_entry):
         await hass.config_entries.async_forward_entry_unload(config_entry,
                                                              homeassistant.components.binary_sensor.DOMAIN)
         await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.switch.DOMAIN)
+        await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.number.DOMAIN)
         _LOGGER.info("Successfully removed sensor from the HDO integration")
     except ValueError:
         pass
@@ -155,8 +117,10 @@ async def update_listener(hass, config_entry):
     config_entry.data = config_entry.options
     await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.binary_sensor.DOMAIN)
     await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.switch.DOMAIN)
+    await hass.config_entries.async_forward_entry_unload(config_entry, homeassistant.components.number.DOMAIN)
     await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.binary_sensor.DOMAIN)
     await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.switch.DOMAIN)
+    await hass.config_entries.async_forward_entry_setup(config_entry, homeassistant.components.number.DOMAIN)
 
 
 @attr.s
@@ -167,6 +131,7 @@ class RuntimeEntryData:
     client = attr.ib(type=RainbirdController)
     number_of_stations = attr.ib(type=int)
     model_and_version = attr.ib(type=ModelAndVersion, init=False)
+    serial = attr.ib(type=str)
 
     def get_version(self):
         return "%d.%d" % (
@@ -174,16 +139,18 @@ class RuntimeEntryData:
             self.model_and_version.minor) if self.model_and_version else "UNKNOWN"
 
     def get_model(self):
-        return RAINBIRD_MODELS[self.model_and_version.model][
-            2] if self.model_and_version and self.model_and_version.model in RAINBIRD_MODELS else "UNKNOWN MODEL"
+        if self.model_and_version and self.model_and_version.model in RAINBIRD_MODELS:
+            return RAINBIRD_MODELS[self.model_and_version.model][2]
+        else:
+            return "UNKNOWN MODEL"
 
 
 class RainbirdEntity(Entity):
-    def __init__(self, hass, controller, device_id, name, data, icon, attributes=None):
+    def __init__(self, hass, controller, name, unique_id, device_info, data, icon, attributes=None):
         self._hass = hass
         self._controller = controller
-        self._device_id = device_id
-        self._name = name
+        self._name = "{} {}".format(device_info.get(CONF_NAME), name)
+        self._unique_id = "{}_{}_{}".format(DOMAIN, data.serial, unique_id)
         self._data = data
         self._icon = icon
         self._attributes = attributes
@@ -198,7 +165,7 @@ class RainbirdEntity(Entity):
         """Information about this entity/device."""
 
         return {
-            "identifiers": {(DOMAIN, self._device_id)},
+            "identifiers": {(DOMAIN, self._data.serial)},
             # If desired, the name for the device could be different to the entity
             "name": "Rainbird controller",
             "sw_version": self._data.get_version(),
@@ -215,3 +182,8 @@ class RainbirdEntity(Entity):
     def icon(self):
         """Return icon."""
         return self._icon
+
+    @property
+    def unique_id(self):
+        """Return Unique ID string."""
+        return self._unique_id

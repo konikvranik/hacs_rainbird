@@ -9,7 +9,7 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
     CONF_SWITCHES,
     CONF_TRIGGER_TIME,
-    CONF_ZONE, CONF_HOST, )
+    CONF_ZONE, CONF_NAME, )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import RainbirdController
@@ -63,21 +63,16 @@ def _get_entities(config_entry, data: RuntimeEntryData, hass: HomeAssistantType)
 class RainBirdSwitch(RainbirdEntity, SwitchEntity):
     """Representation of a Rain Bird switch."""
 
-    def __init__(self, rb: RainbirdController, device_info: dict, hass: HomeAssistantType,
-                 data: RuntimeEntryData = None):
+    def __init__(self, hass, controller, device_info, data):
         """Initialize a Rain Bird Switch Device."""
         self._zone = int(device_info.get(CONF_ZONE))
         self._duration = device_info.get(CONF_TRIGGER_TIME)
-        super(RainBirdSwitch, self).__init__(hass, rb, device_info.get("id"),
-                                             device_info.get(CONF_FRIENDLY_NAME, "Rainbird {} #{}").format(
-                                                 device_info.get(CONF_HOST), self._zone), data, 'mdi:sprinkler-variant',
+        super(RainBirdSwitch, self).__init__(hass, controller,
+                                             "Zone {}".format(self._zone),
+                                             "switch_%d" % self._zone,
+                                             device_info, data, 'mdi:sprinkler-variant',
                                              attributes={"duration": self._duration, "zone": self._zone})
         self._state = None
-
-    @property
-    def unique_id(self):
-        """Return Unique ID string."""
-        return "%s_switch_%d" % (DOMAIN, self._zone)
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
