@@ -11,5 +11,6 @@
   "codeowners": [
     "@konikvranik"
   ],
-  "iot_class": "local_polling"
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/konikvranik/hacs_rainbird/issues"
 }
