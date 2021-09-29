@@ -9,5 +9,6 @@
   "country": "CZ",
   "render_readme": true,
   "iot_class": "Cloud Polling",
-  "icon": "https://brands.home-assistant.io/_/rainbird/icon.png"
+  "icon": "https://brands.home-assistant.io/_/rainbird/icon.png",
+  "logo": "https://brands.home-assistant.io/_/rainbird/logo.png"
 }
