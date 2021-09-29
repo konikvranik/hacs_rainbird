@@ -11,6 +11,5 @@
   "codeowners": [
     "@konikvranik"
   ],
-  "logo": "https://brands.home-assistant.io/_/rainbird/logo.png",
   "iot_class": "local_polling"
 }
