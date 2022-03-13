@@ -7,7 +7,7 @@
   ],
   "homeassistant": "0.109.0",
   "requirements": [
-    "pyrainbird==0.5.0"
+    "pyrainbird-alternative==0.5.0"
   ],
   "country": "CZ",
   "render_readme": true,
