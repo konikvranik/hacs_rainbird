@@ -1,4 +1,5 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
+import asyncio
 import logging
 
 import voluptuous as vol
@@ -30,32 +31,33 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def add_entities(config_entry, data: RuntimeEntryData, async_add_entities, hass: HomeAssistantType):
-    if data.number_of_stations:
-        for i in range(data.number_of_stations):
-            switch = RainBirdSwitch(data.client,
-                                    {"zone": i, "id": config_entry.entry_id, **config_entry.data},
-                                    hass, data)
-            async_add_entities([switch], True)
-    else:
-        cnt = 0
-        stations = data.client.get_available_stations()
-        if stations:
-            for state in stations.stations.states:
-                cnt = cnt + 1
-                if state:
-                    switch = RainBirdSwitch(data.client,
-                                            {"zone": cnt, "id": config_entry.entry_id, **config_entry.data}, hass, data)
-                    async_add_entities([switch], True)
-        else:
-            return False
-    return True
-
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up ESPHome binary sensors based on a config entry."""
     data = hass.data.get(DOMAIN)[config_entry.entry_id]
-    await hass.async_add_executor_job(add_entities, config_entry, data, async_add_entities, hass)
+
+    def _add_entities(future: asyncio.futures.Future):
+        async_add_entities(future.result(), True)
+
+    hass.async_add_executor_job(_get_entities, config_entry, data, hass).add_done_callback(_add_entities)
+
+
+def _get_entities(config_entry, data: RuntimeEntryData, hass: HomeAssistantType):
+    entities = []
+    if data.number_of_stations:
+        for i in range(data.number_of_stations):
+            entities.append(RainBirdSwitch(data.client,
+                                           {"zone": i, "id": config_entry.entry_id, **config_entry.data}, hass, data))
+    else:
+        i = 0
+        stations = data.client.get_available_stations()
+        if stations:
+            for state in stations.stations.states:
+                i = i + 1
+                if state:
+                    entities.append(RainBirdSwitch(data.client,
+                                                   {"zone": i, "id": config_entry.entry_id, **config_entry.data}, hass,
+                                                   data))
+    return entities
 
 
 class RainBirdSwitch(RainbirdEntity, SwitchEntity):
