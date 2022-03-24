@@ -1,7 +1,7 @@
 """Support for Rain Bird Irrigation system LNK WiFi Module."""
-import asyncio
 import logging
 
+import asyncio
 import voluptuous as vol
 from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchEntity
 from homeassistant.const import (
@@ -81,14 +81,14 @@ class RainBirdSwitch(RainbirdEntity, SwitchEntity):
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
-        response = self._controller.irrigate_zone(int(self._zone), int(self._duration))
-        if response and response["type"] == "AcknowledgeResponse":
+        response = self._controller.irrigate_zone(int(self._zone), int(self._duration // 60))
+        if response:
             self._state = True
 
     def turn_off(self, **kwargs):
         """Turn the switch off."""
         response = self._controller.stop_irrigation()
-        if response and response["type"] == "AcknowledgeResponse":
+        if response:
             self._state = False
 
     @property
