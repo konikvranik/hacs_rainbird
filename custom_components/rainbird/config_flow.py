@@ -29,7 +29,8 @@ async def show_form(flow: FlowHandler, step: str, first_time: bool, data=None):
             SENSOR_TYPES),
         vol.Optional(CONF_TRIGGER_TIME,
                      default=data.get(CONF_TRIGGER_TIME, {"minutes": 2})): cv.positive_time_period_dict,
-        vol.Optional(CONF_SCAN_INTERVAL, default=data.get(CONF_SCAN_INTERVAL, {"seconds": 20})): cv.positive_time_period_dict
+        vol.Optional(CONF_SCAN_INTERVAL,
+                     default=data.get(CONF_SCAN_INTERVAL, {"seconds": 20})): cv.positive_time_period_dict
     })
     return flow.async_show_form(
         step_id=step, data_schema=vol.Schema(dict_), description_placeholders={"host": data.get(CONF_HOST, '')}
@@ -107,8 +108,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
         """Read the configuration and initialize data."""
         self.config_entry = config_entry
+        config_entry.options = dict(config_entry.data, **config_entry.options)
         self._data = dict(config_entry.options)
-        #config_entry.options = config_entry.data
         self._errors = {}
 
     async def async_step_init(self, user_input=None):
