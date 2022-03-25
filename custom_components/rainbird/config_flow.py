@@ -107,8 +107,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
         """Read the configuration and initialize data."""
         self.config_entry = config_entry
-        config_entry.options = config_entry.data
         self._data = dict(config_entry.options)
+        #config_entry.options = config_entry.data
         self._errors = {}
 
     async def async_step_init(self, user_input=None):
@@ -122,7 +122,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Update entry
             self._data.update(user_input)
             time_to_secs(self._data, CONF_TRIGGER_TIME)
-            time_to_secs(user_input, CONF_SCAN_INTERVAL)
+            time_to_secs(self._data, CONF_SCAN_INTERVAL)
             return self.async_create_entry(title=self._data[CONF_HOST], data=self._data)
 
 
