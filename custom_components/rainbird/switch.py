@@ -32,7 +32,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up ESPHome binary sensors based on a config entry."""
+    """Set up Rainbird switch entities."""
     data = hass.data.get(DOMAIN)[config_entry.entry_id]
 
     def _add_entities(future: asyncio.futures.Future):
@@ -63,11 +63,12 @@ def _get_entities(config_entry, data: RuntimeEntryData, hass: HomeAssistantType)
 class RainBirdSwitch(RainbirdEntity, SwitchEntity):
     """Representation of a Rain Bird switch."""
 
-    def __init__(self, hass, controller, device_info, data):
+    def __init__(self, rb: RainbirdController, device_info: dict, hass: HomeAssistantType,
+                 data: RuntimeEntryData = None):
         """Initialize a Rain Bird Switch Device."""
         self._zone = int(device_info.get(CONF_ZONE))
         self._duration = device_info.get(CONF_TRIGGER_TIME)
-        super(RainBirdSwitch, self).__init__(hass, controller,
+        super(RainBirdSwitch, self).__init__(hass, rb,
                                              "Zone {}".format(self._zone),
                                              "switch_%d" % self._zone,
                                              device_info, data, 'mdi:sprinkler-variant',

@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import logging
 
+import asyncio
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.components.binary_sensor import PLATFORM_SCHEMA, BinarySensorEntity
 from homeassistant.const import CONF_MONITORED_CONDITIONS
+from homeassistant.helpers.typing import HomeAssistantType
 from pyrainbird import RainbirdController
 
 from . import SENSOR_TYPES, DOMAIN, RuntimeEntryData, RainbirdEntity
@@ -25,23 +27,31 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up Rainbird binary sensors."""
-    runtime_data = hass.data.get(DOMAIN)[config_entry.entry_id]
-    controller = runtime_data.client
-    sensor = BiStateRainBirdSensor(hass, controller, config_entry.data, runtime_data)
-    async_add_entities([sensor], True)
+    """Set up Rainbird binary sensor entities."""
+    data = hass.data.get(DOMAIN)[config_entry.entry_id]
+    
+    def _add_entities(future: asyncio.futures.Future):
+        async_add_entities(future.result(), True)
+
+    hass.async_add_executor_job(_get_entities, config_entry, data, hass).add_done_callback(_add_entities)
+
+
+def _get_entities(config_entry, data: RuntimeEntryData, hass: HomeAssistantType):
+    return [BiStateRainBirdSensor(data.client, config_entry.data, hass, data)]
 
 
 class BiStateRainBirdSensor(RainbirdEntity, BinarySensorEntity):
     """A sensor implementation for Rain Bird device."""
 
-    def __init__(self, hass, controller, device_info, data = None):
+    def __init__(self, rb: RainbirdController, device_info: dict, hass: HomeAssistantType,
+                data: RuntimeEntryData = None):
         """Initialize the Rain Bird sensor."""
         self._sensor_type = "rainsensor"
-        name = SENSOR_TYPES[self._sensor_type][0]
-        super(BiStateRainBirdSensor, self).__init__(hass, controller, name, self._sensor_type, device_info,
-                                                    data,
-                                                    SENSOR_TYPES[self._sensor_type][2])
+        sensor_attrs = SENSOR_TYPES[self._sensor_type]
+        name = sensor_attrs[0]
+        icon = sensor_attrs[2]
+
+        super(BiStateRainBirdSensor, self).__init__(hass, rb, name, self._sensor_type, device_info, data, icon)
         self._state = None
 
     def update(self):
