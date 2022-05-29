@@ -92,7 +92,7 @@ class RainBirdSwitch(RainbirdEntity, SwitchEntity):
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
-        duration = kwargs["zone_run_time"] if "zone_run_time" in kwargs else self._attr_duration
+        duration = kwargs["duration"] if "duration" in kwargs else self._attr_duration
         response = self._controller.irrigate_zone(int(self._zone), int(duration // 60))
         if response:
             self._state = True
