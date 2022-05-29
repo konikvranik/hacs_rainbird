@@ -1,3 +1,4 @@
+# Describes the format for available rainbird services
 command:
   description: Send Rainbird command to controller
   fields:
@@ -14,3 +15,31 @@ command:
       description: Parameters of the command
       example: |-
         commandToTest: '30'
+start_zone:
+  name: Start Zone
+  description: Start a zone
+  target:
+    entity:
+      integration: rainbird
+      domain: switch
+  fields:
+    zone_run_time:
+      name: Run Time
+      description: The amount of time (in seconds) to run the zone
+      default: 120
+      selector:
+        number:
+          min: 1
+          max: 86400
+          mode: box
+stop_all:
+  name: Stop All Watering
+  description: Stop all watering activities
+  fields:
+    device_id:
+      name: Controller
+      description: The controller whose watering activities should be stopped
+      required: true
+      selector:
+        device:
+          integration: rainbird
