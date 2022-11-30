@@ -1,1 +1,1 @@
-pyrainbird-alternative==0.5.4
+pyrainbird==0.6.3
