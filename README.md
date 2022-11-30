@@ -1,6 +1,5 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-# Rain Bird [Home Assistant](https://www.home-assistant.io/) integration
+# Rain Bird [Home Assistant](https://www.home-assistant.io/) integration [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 Instructions on how to integrate your Rain Bird LNK WiFi Module within Home Assistant.
 
